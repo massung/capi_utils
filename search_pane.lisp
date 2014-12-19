@@ -34,19 +34,19 @@
    :accepts-focus-p t
    :font *default-search-pane-font*
    :text-change-callback 'update-search-text-pane
-   :callback 'perform-search))
+   :callback 'search-text-pane-perform-search
+   :callback-type :element-data))
 
 (defmethod update-search-text-pane (text (pane search-text-pane) interface pos)
   "The search text was modified, call the search callback."
   (when (search-text-pane-live-search-p pane)
-    (search-text-pane-perform-search pane :return)))
+    (search-text-pane-perform-search pane text)))
 
-(defmethod search-text-pane-perform-search ((pane search-text-pane) (gesture (eql :return)))
+(defmethod search-text-pane-perform-search ((pane search-text-pane) text)
   "Execute a new search."
-  (let ((text (text-input-pane-text pane)))
-    (setf (search-text-pane-last-search pane) text)
-    (when-let (callback (search-text-pane-search-callback pane))
-      (funcall callback pane text))))
+  (setf (search-text-pane-last-search pane) text)
+  (when-let (callback (search-text-pane-search-callback pane))
+    (funcall callback pane text)))
 
 (defmethod search-text-pane-placeholder-text ((pane search-text-pane))
   "Return the placeholder text for this pane."
