@@ -43,18 +43,37 @@
 
 (defmethod search-text-pane-perform-search ((pane search-text-pane) (gesture (eql :return)))
   "Execute a new search."
-  (when-let (callback (search-text-pane-search-callback pane))
-    (funcall callback pane (text-input-pane-text pane))))
+  (let ((text (text-input-pane-text pane)))
+    (setf (search-text-pane-last-search pane) text)
+    (when-let (callback (search-text-pane-search-callback pane))
+      (funcall callback pane text))))
 
-#+cocoa
+(defmethod search-text-pane-placeholder-text ((pane search-text-pane))
+  "Return the placeholder text for this pane."
+  #+cocoa
+  (let* ((view (cocoa-view-pane-view pane))
+         (cell (objc:invoke view "cell"))
+         (text (objc:invoke cell "placeholderString")))
+    (convert-from-foreign-string (objc:invoke text "UTF8String")))
+
+  #+mswindows
+  (let ((hwnd (simple-pane-handle pane))
+        (external-format (if (string= (software-type) "Windows NT") :unicode :ascii)))
+    (unless (or (null hwnd) (zerop hwnd))
+      (with-dynamic-foreign-objects ((n :long :initial-element 2048)
+                                     (s :char :nelems 2048))
+        (win32:send-message hwnd #x1502 s n)
+
+        ;; get a lisp string
+        (convert-from-foreign-string s :external-format external-format)))))
+
 (defmethod (setf search-text-pane-placeholder-text) (text (pane search-text-pane))
   "Allow a string to be visisble in the text pane when not in focus."
+  #+cocoa
   (let ((view (cocoa-view-pane-view pane)))
-    (objc:invoke (objc:invoke view "cell") "setPlaceholderString:" text)))
+    (objc:invoke (objc:invoke view "cell") "setPlaceholderString:" text))
 
-#+mswindows
-(defmethod (setf search-text-pane-placeholder-text) (text (pane search-text-pane))
-  "Allow a string to be visisble in the text pane when not in focus."
+  #+mswindows
   (let ((hwnd (simple-pane-handle pane))
         (external-format (if (string= (software-type) "Windows NT") :unicode :ascii)))
     (unless (or (null hwnd) (zerop hwnd))
