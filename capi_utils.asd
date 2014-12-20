@@ -11,4 +11,6 @@
   :description "CAPI Utility Panes for LispWorks."
   :serial t
   :components ((:file "capi_utils")
-               (:file "search_pane")))
+               (:file "search_pane")
+               (:file "record_layout")
+               (:file "record_pane")))

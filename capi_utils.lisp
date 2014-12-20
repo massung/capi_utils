@@ -28,6 +28,24 @@
    #:search-text-pane-search-callback
    #:search-text-pane-perform-search
    #:search-text-pane-placeholder-text
+
+   ;; record layouts
+   #:record-layout
+   #:record-layout-selected-panes
+   #:record-layout-select-pane
+   #:record-layout-select-pane-range
+   #:record-layout-select-all-panes
+   #:record-layout-deselect-all-panes
+   #:record-layout-pane-selected-p
+
+   ;; record panes
+   #:record-pane
+   #:record-pane-selected-p
+   #:record-pane-action-callback
+   #:record-pane-alternate-action-callback
+   #:record-pane-select-callback
+   #:record-pane-deselect-callback
+   #:record-pane-drag-callback
    ))
 
 (in-package :capi-utils)
