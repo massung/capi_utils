@@ -78,5 +78,9 @@
 
 (defmethod post-menu-record-pane ((pane record-pane) x y &optional gspec)
   "Right-click action on this record."
+  (unless (record-pane-selected-p pane)
+    (record-layout-select-pane (element-parent pane) pane :single-selection t))
+
+  ;; show the menu
   (when-let (menu (record-pane-alt-action-menu pane))
     (display-popup-menu (funcall menu (top-level-interface pane)) :owner pane :x x :y y)))
