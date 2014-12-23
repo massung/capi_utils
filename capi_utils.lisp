@@ -29,23 +29,12 @@
    #:search-text-pane-perform-search
    #:search-text-pane-placeholder-text
 
-   ;; record layouts
-   #:record-layout
-   #:record-layout-selected-panes
-   #:record-layout-select-pane
-   #:record-layout-select-pane-range
-   #:record-layout-select-all-panes
-   #:record-layout-deselect-all-panes
-   #:record-layout-pane-selected-p
-
-   ;; record panes
-   #:record-pane
-   #:record-pane-selected-p
-   #:record-pane-action-callback
-   #:record-pane-alternate-action-callback
-   #:record-pane-select-callback
-   #:record-pane-deselect-callback
-   #:record-pane-drag-callback
+   ;; output panels
+   #:output-panel
+   #:output-panel-item-display-callback
+   #:output-panel-item-action-callback
+   #:output-panel-item-height
+   #:output-panel-item-menu
    ))
 
 (in-package :capi-utils)

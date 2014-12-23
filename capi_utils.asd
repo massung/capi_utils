@@ -14,5 +14,4 @@
                #+cocoa (:file "osx_utils")
                #+mswindows (:file "win_utils")
                (:file "search_pane")
-               (:file "record_layout")
-               (:file "record_pane")))
+               (:file "output_panel")))
