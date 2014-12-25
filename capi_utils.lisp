@@ -31,10 +31,19 @@
 
    ;; output panels
    #:output-panel
-   #:output-panel-item-display-callback
-   #:output-panel-item-action-callback
    #:output-panel-item-height
    #:output-panel-item-menu
+   #:output-panel-item-display-callback
+   #:output-panel-item-action-callback
+   #:output-panel-item-select-callback
+   #:output-panel-item-retract-callback
+   #:output-panel-selected-background
+   #:output-panel-selected-foreground
+   #:output-panel-interaction
+   #:output-panel-selection
+   #:output-panel-selected-item-p
+   #:output-panel-selected-items
+   #:output-panel-sort
    ))
 
 (in-package :capi-utils)

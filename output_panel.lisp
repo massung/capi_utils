@@ -19,24 +19,33 @@
 
 (in-package :capi-utils)
 
-(defclass output-panel (output-pane choice)
-  ((item-display-callback :initform nil :initarg :item-display-callback :accessor output-panel-item-display-callback)
-   (item-action-callback  :initform nil :initarg :item-action-callback  :accessor output-panel-item-action-callback)
-   (item-height           :initform 20  :initarg :item-height           :accessor output-panel-item-height)
-   (item-menu             :initform nil :initarg :item-menu             :accessor output-panel-item-menu)
+(defclass output-panel (output-pane collection)
+  ((item-height   :initform 20  :initarg :item-height            :accessor output-panel-item-height)
+   (item-menu     :initform nil :initarg :item-menu              :accessor output-panel-item-menu)
+   
+   ;; item interaction callbacks
+   (item-display  :initform nil :initarg :item-display-callback  :accessor output-panel-item-display-callback)
+   (item-action   :initform nil :initarg :item-action-callback   :accessor output-panel-item-action-callback)
+   (item-selected :initform nil :initarg :item-selected-callback :accessor output-panel-item-select-callback)
+   (item-retract  :initform nil :initarg :item-retract-callback  :accessor output-panel-item-retract-callback)
 
    ;; selected item settings
-   (selected-bg           :initform nil :initarg :selected-background   :accessor output-panel-selected-background)
-   (selected-fg           :initform nil :initarg :selected-foreground   :accessor output-panel-selected-foreground)
+   (selected-bg   :initform nil :initarg :selected-background    :accessor output-panel-selected-background)
+   (selected-fg   :initform nil :initarg :selected-foreground    :accessor output-panel-selected-foreground)
 
-   ;; the last-clicked item
-   (last-selected-index   :initform nil :initarg :last-selected-index   :accessor output-panel-last-selected-index))
+   ;; interaction mode (:no-selection, :single-selection, :multiple-selection)
+   (interaction   :initform nil :initarg :interaction            :accessor output-panel-interaction)
+
+   ;; currently selected indices and callback
+   (selection     :initform nil :initarg :selected-items         :reader   output-panel-selection)
+   (selection-cb  :initform nil :initarg :selection-callback     :accessor output-panel-selection-callback))
   (:default-initargs
    :draw-with-buffer t
    :vertical-scroll t
    :pane-can-scroll t
    :scroll-start-y 0
    :scroll-height 0
+   :test-function 'equal
    :resize-callback 'resize-output-panel
    :display-callback 'display-output-panel
    :scroll-callback 'scroll-output-panel
@@ -47,10 +56,23 @@
                   ;((:motion :button-1 :press) drag-item)
                   (:post-menu post-menu-item))))
 
+(defmethod apply-callback ((panel output-panel) callback-slot item &rest args)
+  "Send the callback the arguments in callback-type."
+  (when-let (callback (slot-value panel callback-slot))
+    (apply callback panel item args)))
+
 (defmethod resize-scroll ((panel output-panel))
   "Calculate the new scroll height from the collection size."
-  (with-geometry panel
-    (setf %scroll-height% (* (output-panel-item-height panel) (count-collection-items panel)))))
+  (let ((h (* (output-panel-item-height panel) (count-collection-items panel))))
+
+    ;; change the maximum range of the panel
+    (set-vertical-scroll-parameters panel :max-range h)
+
+    ;; if everything fits just fine, set the slug back to 0
+    (if (<= h (simple-pane-visible-height panel))
+        (set-vertical-scroll-parameters panel :slug-position 0)
+      (unless (<= (or (get-vertical-scroll-parameters panel :slug-position) 0) h)
+        (set-vertical-scroll-parameters panel :slug-position h)))))
 
 (defmethod resize-output-panel ((panel output-panel) x y w h)
   "Recalculate the scroll size and redraw."
@@ -105,59 +127,62 @@
                     (fg (if selected sel-fg fg)))
                (gp:with-graphics-state (panel :mask mask :transform tform :background bg :foreground fg)
                  (gp:draw-rectangle panel 0 0 w ih :filled t :foreground bg)
-                 (when-let (callback (output-panel-item-display-callback panel))
-                   (funcall callback panel item w ih selected)))))))
+
+                 ;; allow the item to draw itself
+                 (apply-callback panel 'item-display item w ih selected))))))
 
 (defmethod scroll-output-panel ((panel output-panel) direction op value &key interactive)
   "The user is scrolling, so update the scroll position and redraw."
-  (declare (ignore interactive))
-  (let ((y (get-vertical-scroll-parameters panel :slug-position)))
-    (case op
-      (:move (set-vertical-scroll-parameters panel :slug-position value))
-      (:drag (set-vertical-scroll-parameters panel :slug-position value))
-      
-      ;; relative by a single item
-      (:step (let ((step (* value (output-panel-item-height panel))))
-               (set-vertical-scroll-parameters panel :slug-position (+ y step))))
-
-      ;; relateive by a single page
-      (:page (let ((page (* value (simple-pane-visible-height panel))))
-               (set-vertical-scroll-parameters panel :slug-position (+ y page))))))
-  (gp:invalidate-rectangle panel))
+  (when interactive
+    (let ((y (get-vertical-scroll-parameters panel :slug-position)))
+      (case op
+        (:move (set-vertical-scroll-parameters panel :slug-position value))
+        (:drag (set-vertical-scroll-parameters panel :slug-position value))
+        
+        ;; relative by a single item
+        (:step (let ((step (* value (output-panel-item-height panel))))
+                 (set-vertical-scroll-parameters panel :slug-position (+ y step))))
+        
+        ;; relateive by a single page
+        (:page (let ((page (* value (simple-pane-visible-height panel))))
+                 (set-vertical-scroll-parameters panel :slug-position (+ y page))))))
+    
+    ;; redraw since the slug position changed
+    (gp:invalidate-rectangle panel)))
 
 (defmethod select-item ((panel output-panel) item &key single-selection-p)
   "Add or remove an item from the current selection set."
   (when-let (i (search-for-item panel item))
-    (when (setf (choice-selected-items panel)
-                (cond ((member (choice-interaction panel) '(:no-selection nil)))
-                      
-                      ;; single selection or forced single selection
-                      ((or single-selection-p (eq (choice-interaction panel) :single-selection))
-                       (list item))
-                      
-                      ;; item already selected?
-                      ((choice-selected-item-p panel item)
-                       (remove item (choice-selected-items panel)))
-                      
-                      ;; multiple or extended selection
-                      (t (cons item (choice-selected-items panel)))))
-      (setf (output-panel-last-selected-index panel) i))))
+    (setf (output-panel-selection panel)
+          (cond ((member (output-panel-interaction panel) '(:no-selection nil)))
+                
+                ;; single selection or forced single selection
+                ((or single-selection-p (eq (output-panel-interaction panel) :single-selection))
+                 (list i))
+                
+                ;; item already selected?
+                ((choice-selected-item-p panel item)
+                 (remove i (output-panel-selection panel)))
+                
+                ;; multiple or extended selection
+                (t (cons i (output-panel-selection panel)))))))
 
 (defmethod extend-item-selection ((panel output-panel) item)
   "Select a range of items from the last selected item to this one."
-  (case (choice-interaction panel)
-    ((:no-selection nil))
-
-    ;; don't extend, just select this item
-    (:single-selection (select-item panel item))
-
-    ;; multiple or extended selection
-    (otherwise (if-let (j (output-panel-last-selected-index panel))
-                   (setf (choice-selection panel)
-                         (loop with i = (search-for-item panel item)
-                               for n from (min i j) to (max i j)
-                               collect n))
-                 (select-item panel item)))))
+  (when-let (i (search-for-item panel item))
+    (case (output-panel-interaction panel)
+      ((:no-selection nil))
+      
+      ;; don't extend, just select this item
+      (:single-selection (setf (output-panel-selection panel) (list i)))
+      
+      ;; multiple or extended selection (ensure this item is first in the selection list)
+      (otherwise (if-let (j (first (output-panel-selection panel)))
+                     (setf (output-panel-selection panel)
+                           (if (< i j)
+                               (loop for n from i to j collect n)
+                             (loop for n from i downto j collect n)))
+                   (select-item panel item))))))
 
 (defmethod item-at-position ((panel output-panel) x y)
   "Return the item clicked at a given position."
@@ -175,8 +200,9 @@
   "Select and perform an action on a given item."
   (when-let (item (item-at-position panel x y))
     (select-item panel item :single-selection-p t)
-    (when-let (callback (output-panel-item-action-callback panel))
-      (funcall callback panel item))))
+
+    ;; let the item do something since it was acted on
+    (apply-callback panel 'item-action item)))
 
 (defmethod shift-click-item ((panel output-panel) x y)
   "Select a range of items."
@@ -198,26 +224,103 @@
     (when-let (menu (output-panel-item-menu panel))
       (display-popup-menu (funcall menu (top-level-interface panel)) :output panel :x x :y y))))
 
+(defmethod post-retracts ((panel output-panel) old-items new-items)
+  "Issue retract callbacks for old items that are no longer selected."
+  (let (selection-altered-p)
+    (dolist (item old-items selection-altered-p)
+      (unless (find item new-items :test (collection-test-function panel))
+        (apply-callback panel 'item-retract item)
+        (setf selection-altered-p t)))))
+
+(defmethod post-selects ((panel output-panel) old-items new-items)
+  "Issue selected callbacks for newly selected items that weren't selected before."
+  (let (selection-altered-p)
+    (dolist (item new-items selection-altered-p)
+      (unless (find item old-items :test (collection-test-function panel))
+        (apply-callback panel 'item-retract item)
+        (setf selection-altered-p t)))))
+  
+(defmethod output-panel-selected-item-p ((panel output-panel) item)
+  "T if the item is currently selected."
+  (loop with test = (collection-test-function panel)
+
+        ;; loop over the selected indices
+        for i in (output-panel-selection panel)
+        for selected-item = (get-collection-item panel i)
+
+        ;; success if the items match
+        when (funcall test item selected-item) return t))
+
+(defmethod output-panel-selected-items ((panel output-panel))
+  "Return the list of selected items from the selection set."
+  (loop for i in (output-panel-selection panel) collect (get-collection-item panel i)))
+
+(defmethod output-panel-sort ((panel output-panel) predicate &key key)
+  "Sort the colleciton items."
+  (setf (collection-items panel) (stable-sort (collection-items panel) predicate :key key)))
+
+(defmethod (setf output-panel-selected-items) (items (panel output-panel))
+  "Set the selection by item instead of index."
+  (setf (output-panel-selection panel)
+
+        ;; only keep items that are actually in the collection
+        (loop for item in items for i = (search-for-item panel item) when i collect i)))
+
 (defmethod (setf collection-items) (items (panel output-panel))
   "Update the scroll height and maintain the current selection across item sets."
-  (let ((selection (choice-selected-items panel)))
+  (let ((selection (flet ((keep-p (i)
+                            (find i items :test (collection-test-function panel))))
+                     (remove-if-not #'keep-p (output-panel-selected-items panel)))))
 
     ;; allow the items to change now...
     (call-next-method items panel)
+
+    ;; wipe the selection indices, this will prevent retract callbacks from bad indices
+    (setf (slot-value panel 'selection) nil)
+
+    ;; try to keep whatever we could from the original selection
+    (setf (output-panel-selected-items panel) selection))
     
-    ;; resize the scrollbar
-    (resize-scroll panel)
-  
-    ;; if the slug position is past the end, truncate it
-    (with-geometry panel
-      (unless (<= (get-vertical-scroll-parameters panel :slug-position) %scroll-height%)
-        (set-vertical-scroll-parameters panel :slug-position %scroll-height%)))
+  ;; resize the scrollbar
+  (resize-scroll panel)
 
-    ;; assign the selection back
-    (if (sequencep selection)
-        (setf (choice-selected-items panel) selection)
-      (setf (choice-selected-item panel) selection))))
-
-(defmethod (setf choice-selection) :after (indices (panel output-panel))
-  "The selection changed, redraw the panel."
+  ;; redraw
   (gp:invalidate-rectangle panel))
+
+(defmethod (setf output-panel-selection) (indices (panel output-panel))
+  "The selection is about to change, inform items, inform the panel, and redraw."
+  (let* ((selection (output-panel-selection panel))
+         
+         ;; determine which selected items are going and are new
+         (selected (set-difference indices selection))
+         (retracted (set-difference selection indices)))
+
+    ;; update the selection - make sure the indices are valid
+    (setf (slot-value panel 'selection)
+          (loop for i in indices when (< -1 i (count-collection-items panel)) collect i))
+
+    ;; issue selected callbacks for newly selected items
+    (loop for i in selected do (apply-callback panel 'item-selected (get-collection-item panel i)))
+
+    ;; issue retracted callbacks for items that used to be selected
+    (loop for i in retracted do (apply-callback panel 'item-retract (get-collection-item panel i)))
+
+    ;; notify that the selection changed if it has
+    (when (or selected retracted)
+      (when-let (callback (output-panel-selection-callback panel))
+        (funcall callback panel))))
+
+  ;; redraw
+  (gp:invalidate-rectangle panel))
+
+(defmethod (setf output-panel-interaction) :after (mode (panel output-panel))
+  "The interaction mode changed. Maybe change the selection."
+  (setf (output-panel-selection panel)
+        (let ((selection (output-panel-selection panel)))
+          (case mode
+
+            ;; single selection, keep the first item
+            (:single-selection (and selection (first selection)))
+
+            ;; it's multiple select, so just keep everything
+            (:multiple-selection selection)))))
