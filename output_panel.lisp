@@ -274,19 +274,15 @@
 
 (defmethod (setf collection-items) (items (panel output-panel))
   "Update the scroll height and maintain the current selection across item sets."
-  (let ((selection (flet ((keep-p (i)
-                            (find i items :test (collection-test-function panel))))
-                     (remove-if-not #'keep-p (output-panel-selected-items panel)))))
+  (let ((selection (output-panel-selected-items panel)))
 
     ;; allow the items to change now...
     (call-next-method items panel)
 
-    ;; wipe the selection indices, this will prevent retract callbacks from bad indices
-    (setf (slot-value panel 'selection) nil)
-
-    ;; try to keep whatever we could from the original selection
-    (setf (output-panel-selected-items panel) selection))
-    
+    ;; re-select the same objects without issuing callbacks or a selection changed
+    (setf (slot-value panel 'selection)
+          (loop for item in selection for i = (search-for-item panel item) when i collect i)))
+  
   ;; resize the scrollbar
   (resize-scroll panel)
 
