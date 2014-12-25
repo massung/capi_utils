@@ -44,6 +44,7 @@
    #:output-panel-selected-item-p
    #:output-panel-selected-items
    #:output-panel-sort
+   #:output-panel-select-all
    ))
 
 (in-package :capi-utils)

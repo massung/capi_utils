@@ -259,6 +259,12 @@
   "Sort the colleciton items."
   (setf (collection-items panel) (stable-sort (collection-items panel) predicate :key key)))
 
+(defmethod output-panel-select-all ((panel output-panel))
+  "Select all the items."
+  (when (eq (output-panel-interaction panel) :multiple-selection)
+    (setf (output-panel-selection panel)
+          (loop for i below (count-collection-items panel) collect i))))
+
 (defmethod (setf output-panel-selected-items) (items (panel output-panel))
   "Set the selection by item instead of index."
   (setf (output-panel-selection panel)
