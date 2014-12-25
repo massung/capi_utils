@@ -179,9 +179,9 @@
       ;; multiple or extended selection (ensure this item is first in the selection list)
       (otherwise (if-let (j (first (output-panel-selection panel)))
                      (setf (output-panel-selection panel)
-                           (if (< i j)
-                               (loop for n from i to j collect n)
-                             (loop for n from i downto j collect n)))
+                           (if (> i j)
+                               (loop for n from j to i collect n)
+                             (loop for n from j downto i collect n)))
                    (select-item panel item))))))
 
 (defmethod item-at-position ((panel output-panel) x y)
