@@ -223,22 +223,6 @@
     ;; show the menu
     (when-let (menu (output-panel-item-menu panel))
       (display-popup-menu (funcall menu (top-level-interface panel)) :output panel :x x :y y))))
-
-(defmethod post-retracts ((panel output-panel) old-items new-items)
-  "Issue retract callbacks for old items that are no longer selected."
-  (let (selection-altered-p)
-    (dolist (item old-items selection-altered-p)
-      (unless (find item new-items :test (collection-test-function panel))
-        (apply-callback panel 'item-retract item)
-        (setf selection-altered-p t)))))
-
-(defmethod post-selects ((panel output-panel) old-items new-items)
-  "Issue selected callbacks for newly selected items that weren't selected before."
-  (let (selection-altered-p)
-    (dolist (item new-items selection-altered-p)
-      (unless (find item old-items :test (collection-test-function panel))
-        (apply-callback panel 'item-retract item)
-        (setf selection-altered-p t)))))
   
 (defmethod output-panel-selected-item-p ((panel output-panel) item)
   "T if the item is currently selected."
