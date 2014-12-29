@@ -22,8 +22,8 @@ Making use of the [placeholder text code](http://www.doremir.com/lisp/lispworks.
 
 ***Accessors***
 
-*search-text-pane-live-search-p*
-*search-text-pane-search-callback*
+*search-text-pane-live-search-p*<br/>
+*search-text-pane-search-callback*<br/>
 *search-text-pane-placeholder-text*
 
 ## `output-panel`
@@ -54,23 +54,20 @@ An output-panel is a subclass of both `output-pane` and `collection`. It also mi
 
 *:selection-callback* This is called whenever the selection changes. This is called in addition to the *:item-selected-callback*
 
-***Readers***
-
-*output-panel-selection*
-
 ***Accessors***
 
-*output-panel-item-height*
-*output-panel-item-menu*
-*output-panel-item-display-callback*
-*output-panel-item-action-callback*
-*output-panel-item-select-callback*
-*output-panel-item-retract-callback*
-*output-panel-selected-background*
-*output-panel-selected-foreground*
-*output-panel-interaction*
-*output-panel-selection-callback*
-*output-panel-selected-items*
+*output-panel-item-height*<br/>
+*output-panel-item-menu*<br/>
+*output-panel-item-display-callback*<br/>
+*output-panel-item-action-callback*<br/>
+*output-panel-item-select-callback*<br/>
+*output-panel-item-retract-callback*<br/>
+*output-panel-selected-background*<br/>
+*output-panel-selected-foreground*<br/>
+*output-panel-interaction*<br/>
+*output-panel-selection-callback*<br/>
+*output-panel-selected-items*<br/>
+*output-panel-selection*
 
 ***Methods***
 
@@ -79,6 +76,14 @@ An output-panel is a subclass of both `output-pane` and `collection`. It also mi
 `(output-panel-sort panel predicate &key key)` sorts all the items in the collection with *stable-sort*. The current selection is maintained.
 
 `(output-panel-select-all panel)` selects all the items in the collection if the *:interaction* is `:multiple-selection`. Otherwise no change to the selection is made.
+
+***Notes***
+
+Unlike the `choice` class, when getting the current selection a list will *always* be returned - even if `:single-selection` is the interaction style.
+
+The `output-panel-selection` accessor returns item indices, while `output-panel-selected-items` returns the actual items. Both are `setf`-able. But, when setting the selected items, `search-for-item` will be used to find the index, which uses the `collection-test-function`. If you have multiple items in then collection that test equal, the first one will be selected.
+
+When your item is being drawn, its draw area is transformed and masked by the panel. This means that (0,0) is the upper-left coordinate of the item's visible area (and not the upper-left of the panel). It also means that if you draw outside the visible area of the item it will be clipped.
 
 ***Example***
 
