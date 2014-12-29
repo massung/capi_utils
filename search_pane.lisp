@@ -24,7 +24,7 @@
   #+mswindows (gp:make-font-description :stock :system-font :size 8))
 
 (defclass search-text-pane (text-input-pane)
-  ((last-search     :initform nil :initarg :last-search     :accessor search-text-pane-last-search)
+  ((last-search     :initform nil :initarg :last-search     :reader   search-text-pane-last-search)
    (live-search-p   :initform t   :initarg :live-search-p   :accessor search-text-pane-live-search-p)
    (search-callback :initform nil :initarg :search-callback :accessor search-text-pane-search-callback))
   (:default-initargs

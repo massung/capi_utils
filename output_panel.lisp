@@ -87,9 +87,6 @@
          (w (simple-pane-visible-width panel))
          (h (simple-pane-visible-height panel))
 
-         ;; the render mask so items don't render outside their area
-         (mask (list 0 0 w h))
-
          ;; height per item
          (ih (output-panel-item-height panel)))
 
@@ -121,6 +118,9 @@
                     
                     ;; set the translation based on the scroll position
                     (tform (gp:make-transform 1 0 0 1 0 y))
+
+                    ;; the render mask so items don't render outside their area
+                    (mask (list 0 y w ih))
                     
                     ;; pick the background and foreground to use
                     (bg (if selected sel-bg bg))
@@ -150,79 +150,78 @@
     ;; redraw since the slug position changed
     (gp:invalidate-rectangle panel)))
 
-(defmethod select-item ((panel output-panel) item &key single-selection-p)
+(defmethod select-index ((panel output-panel) i &key single-selection-p)
   "Add or remove an item from the current selection set."
-  (when-let (i (search-for-item panel item))
-    (setf (output-panel-selection panel)
-          (cond ((member (output-panel-interaction panel) '(:no-selection nil)))
-                
-                ;; single selection or forced single selection
-                ((or single-selection-p (eq (output-panel-interaction panel) :single-selection))
-                 (list i))
-                
-                ;; item already selected?
-                ((choice-selected-item-p panel item)
-                 (remove i (output-panel-selection panel)))
-                
-                ;; multiple or extended selection
-                (t (cons i (output-panel-selection panel)))))))
+  (setf (output-panel-selection panel)
+        (cond ((member (output-panel-interaction panel) '(:no-selection nil))
+               ())
+              
+              ;; single selection or forced single selection
+              ((or single-selection-p (eq (output-panel-interaction panel) :single-selection))
+               (list i))
+              
+              ;; item already selected?
+              ((member i (output-panel-selection panel))
+               (remove i (output-panel-selection panel)))
+              
+              ;; multiple or extended selection
+              (t (cons i (output-panel-selection panel))))))
 
-(defmethod extend-item-selection ((panel output-panel) item)
+(defmethod extend-index-selection ((panel output-panel) i)
   "Select a range of items from the last selected item to this one."
-  (when-let (i (search-for-item panel item))
-    (case (output-panel-interaction panel)
-      ((:no-selection nil))
-      
-      ;; don't extend, just select this item
-      (:single-selection (setf (output-panel-selection panel) (list i)))
-      
-      ;; multiple or extended selection (ensure this item is first in the selection list)
-      (otherwise (if-let (j (first (output-panel-selection panel)))
-                     (setf (output-panel-selection panel)
-                           (if (> i j)
-                               (loop for n from j to i collect n)
-                             (loop for n from j downto i collect n)))
-                   (select-item panel item))))))
+  (case (output-panel-interaction panel)
+    ((:no-selection nil))
+    
+    ;; don't extend, just select this item
+    (:single-selection (setf (output-panel-selection panel) (list i)))
+    
+    ;; multiple or extended selection (ensure this item is first in the selection list)
+    (otherwise (if-let (j (first (output-panel-selection panel)))
+                   (setf (output-panel-selection panel)
+                         (if (> i j)
+                             (loop for n from j to i collect n)
+                           (loop for n from j downto i collect n)))
+                 (select-index panel i)))))
 
-(defmethod item-at-position ((panel output-panel) x y)
+(defmethod index-at-position ((panel output-panel) x y)
   "Return the item clicked at a given position."
   (with-geometry panel
     (when (and (< 0 x %width%)
                (< 0 y %scroll-height%))
-      (get-collection-item panel (truncate y (output-panel-item-height panel))))))
+      (truncate y (output-panel-item-height panel)))))
 
 (defmethod click-item ((panel output-panel) x y)
   "Select an item."
-  (when-let (item (item-at-position panel x y))
-    (select-item panel item :single-selection-p t)))
+  (when-let (i (index-at-position panel x y))
+    (select-index panel i :single-selection-p t)))
 
 (defmethod double-click-item ((panel output-panel) x y)
   "Select and perform an action on a given item."
-  (when-let (item (item-at-position panel x y))
-    (select-item panel item :single-selection-p t)
-
+  (when-let (i (index-at-position panel x y))
+    (select-index panel i :single-selection-p t)
+    
     ;; let the item do something since it was acted on
-    (apply-callback panel 'item-action item)))
+    (apply-callback panel 'item-action (get-collection-item panel i))))
 
 (defmethod shift-click-item ((panel output-panel) x y)
   "Select a range of items."
-  (when-let (item (item-at-position panel x y))
-    (extend-item-selection panel item)))
+  (when-let (i (index-at-position panel x y))
+    (extend-index-selection panel i)))
 
 (defmethod hyper-click-item ((panel output-panel) x y)
   "Toggle the selection status of an item."
-  (when-let (item (item-at-position panel x y))
-    (select-item panel item)))
+  (when-let (i (index-at-position panel x y))
+    (select-index panel i)))
 
 (defmethod post-menu-item ((panel output-panel) x y)
   "Display an alternative action menu for the current selection."
-  (when-let (item (item-at-position panel x y))
-    (unless (choice-selected-item-p panel item)
-      (select-item panel item :single-selection-p t))
-
+  (when-let (i (index-at-position panel x y))
+    (unless (member i (output-panel-selection panel))
+      (select-index panel i :single-selection-p t))
+      
     ;; show the menu
     (when-let (menu (output-panel-item-menu panel))
-      (display-popup-menu (funcall menu (top-level-interface panel)) :output panel :x x :y y))))
+      (display-popup-menu (funcall menu (top-level-interface panel)) :owner panel :x x :y y))))
   
 (defmethod output-panel-selected-item-p ((panel output-panel) item)
   "T if the item is currently selected."
@@ -245,7 +244,7 @@
 
 (defmethod output-panel-select-all ((panel output-panel))
   "Select all the items."
-  (when (eq (output-panel-interaction panel) :multiple-selection)
+  (when (member (output-panel-interaction panel) '(:multiple-selection :extended-selection))
     (setf (output-panel-selection panel)
           (loop for i below (count-collection-items panel) collect i))))
 
