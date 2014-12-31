@@ -29,6 +29,9 @@
    (item-selected :initform nil :initarg :item-selected-callback :accessor output-panel-item-select-callback)
    (item-retract  :initform nil :initarg :item-retract-callback  :accessor output-panel-item-retract-callback)
 
+   ;; if the panel is empty, use this draw callback
+   (empty-display :initform nil :initarg :empty-display-callback :accessor output-panel-empty-display-callback)
+
    ;; selected item settings
    (selected-bg   :initform nil :initarg :selected-background    :accessor output-panel-selected-background)
    (selected-fg   :initform nil :initarg :selected-foreground    :accessor output-panel-selected-foreground)
@@ -93,43 +96,48 @@
     ;; clear the panel
     (gp:clear-graphics-port panel)
 
-    ;; determine the start index and the negative y offset
-    (loop with (start offset) = (multiple-value-list (truncate pos ih))
-          with n = (count-collection-items panel)
-          
-          ;; background and foreground
-          with bg = (simple-pane-background panel)
-          with fg = (simple-pane-foreground panel)
-          
-          ;; get the default background and foreground colors for selected items
-          with sel-bg = (or (output-panel-selected-background panel) :color_highlight)
-          with sel-fg = (or (output-panel-selected-foreground panel) :color_highlighttext)
-          
-          ;; loop over each item
-          for i from start
-          for y from (- offset) by ih
-          
-          ;; stop when offscreen or at the end of the collection
-          until (or (> y h) (>= i n))
-          
-          ;; translate, mask, set colors, and draw
-          do (let* ((item (get-collection-item panel i))
-                    (selected (choice-selected-item-p panel item))
-                    
-                    ;; set the translation based on the scroll position
-                    (tform (gp:make-transform 1 0 0 1 0 y))
+    ;; if there's nothing to draw, use an empty callback
+    (if (zerop (count-collection-items panel))
+        (when-let (callback (output-panel-empty-display-callback panel))
+          (funcall callback panel))
 
-                    ;; the render mask so items don't render outside their area
-                    (mask (list 0 y w ih))
-                    
-                    ;; pick the background and foreground to use
-                    (bg (if selected sel-bg bg))
-                    (fg (if selected sel-fg fg)))
-               (gp:with-graphics-state (panel :mask mask :transform tform :background bg :foreground fg)
-                 (gp:draw-rectangle panel 0 0 w ih :filled t :foreground bg)
-
-                 ;; allow the item to draw itself
-                 (apply-callback panel 'item-display item w ih selected))))))
+      ;; draw each item in the visible area
+      (loop with (start offset) = (multiple-value-list (truncate pos ih))
+            with n = (count-collection-items panel)
+            
+            ;; background and foreground
+            with bg = (simple-pane-background panel)
+            with fg = (simple-pane-foreground panel)
+            
+            ;; get the default background and foreground colors for selected items
+            with sel-bg = (or (output-panel-selected-background panel) :color_highlight)
+            with sel-fg = (or (output-panel-selected-foreground panel) :color_highlighttext)
+            
+            ;; loop over each item
+            for i from start
+            for y from (- offset) by ih
+            
+            ;; stop when offscreen or at the end of the collection
+            until (or (> y h) (>= i n))
+            
+            ;; translate, mask, set colors, and draw
+            do (let* ((item (get-collection-item panel i))
+                      (selected (choice-selected-item-p panel item))
+                      
+                      ;; set the translation based on the scroll position
+                      (tform (gp:make-transform 1 0 0 1 0 y))
+                      
+                      ;; the render mask so items don't render outside their area
+                      (mask (list 0 y w ih))
+                      
+                      ;; pick the background and foreground to use
+                      (bg (if selected sel-bg bg))
+                      (fg (if selected sel-fg fg)))
+                 (gp:with-graphics-state (panel :mask mask :transform tform :background bg :foreground fg)
+                   (gp:draw-rectangle panel 0 0 w ih :filled t :foreground bg)
+                   
+                   ;; allow the item to draw itself
+                   (apply-callback panel 'item-display item w ih selected)))))))
 
 (defmethod scroll-output-panel ((panel output-panel) direction op value &key interactive)
   "The user is scrolling, so update the scroll position and redraw."
