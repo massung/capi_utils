@@ -20,7 +20,7 @@
 (in-package :capi-utils)
 
 (defparameter *default-search-pane-font*
-  #+cocoa (gp:make-font-description :family "Helvetica Neue")
+  #+cocoa (gp:make-font-description :family "Helvetica Neue" :size 13)
   #+mswindows (gp:make-font-description :stock :system-font :size 8))
 
 (defclass search-text-pane (text-input-pane)
@@ -81,3 +81,8 @@
           text
         (declare (ignore n bytes))
         (win32:send-message hwnd #x1501 0 new-ptr)))))
+
+(defmethod (setf text-input-pane-text) :after (text (pane search-text-pane))
+  "After setting the text, perform a search."
+  (when (search-text-pane-live-search-p pane)
+    (search-text-pane-perform-search pane text)))
