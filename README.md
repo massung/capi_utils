@@ -12,16 +12,16 @@ Making use of the [placeholder text code](http://www.doremir.com/lisp/lispworks.
 
 ***Initargs***
 
-*:search-callback* This is called whenever the user wants to search. The callback function should take the *pane* and *search-text* as arguments.
+*:soft-search-callback* This is called whenever the user changes the text in the pane. The callback function should take the *pane* and *search-text* as arguments.
 
-*:live-search-p* This should be non-nil if the search callback should be called each time the pane's text changes. Otherwise the search callback will only be called when enter is pressed.
+*:hard-search-callback* This is called whenever the user has pressed enter, return, shift-enter, or shift-return inside the pane. Like the *soft-search-callback*, it takes the pane and the text as arguments.
 
 ***Readers***
 
-*search-text-pane-last-search*
+*search-text-pane-last-search* Always returns the text of the last **hard** search performed (the last soft search is always equal to *text-input-pane-text*).
 
 ***Accessors***
 
-*search-text-pane-live-search-p*<br/>
-*search-text-pane-search-callback*<br/>
+*search-text-pane-soft-search-callback*<br/>
+*search-text-pane-hard-search-callback*<br/>
 *search-text-pane-placeholder-text*

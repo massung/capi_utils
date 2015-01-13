@@ -21,12 +21,12 @@
 
 (defparameter *default-search-pane-font*
   #+cocoa (gp:make-font-description :family "Helvetica Neue" :size 13)
-  #+mswindows (gp:make-font-description :stock :system-font :size 8))
+  #+mswindows (gp:make-font-description :stock "MS Sans Serif" :size 9))
 
 (defclass search-text-pane (text-input-pane)
-  ((last-search     :initform nil :initarg :last-search     :accessor search-text-pane-last-search)
-   (live-search-p   :initform t   :initarg :live-search-p   :accessor search-text-pane-live-search-p)
-   (search-callback :initform nil :initarg :search-callback :accessor search-text-pane-search-callback))
+  ((last-search   :initform nil :initarg :last-search          :accessor search-text-pane-last-search)
+   (soft-callback :initform nil :initarg :soft-search-callback :accessor search-text-pane-soft-search-callback)
+   (hard-callback :initform nil :initarg :hard-search-callback :accessor search-text-pane-hard-search-callback))
   (:default-initargs
    :search-field "Search"
    :maximum-recent-items 0
@@ -34,18 +34,21 @@
    :accepts-focus-p t
    :font *default-search-pane-font*
    :text-change-callback 'update-search-text-pane
-   :callback 'search-text-pane-perform-search
+   :callback 'search-text-pane-perform-hard-search
    :callback-type :element-data))
 
 (defmethod update-search-text-pane (text (pane search-text-pane) interface pos)
   "The search text was modified, call the search callback."
-  (when (search-text-pane-live-search-p pane)
-    (search-text-pane-perform-search pane text)))
+  (search-text-pane-perform-soft-search pane text))
 
-(defmethod search-text-pane-perform-search ((pane search-text-pane) text)
+(defmethod search-text-pane-perform-soft-search ((pane search-text-pane) text)
   "Execute a new search."
-  (setf (search-text-pane-last-search pane) text)
-  (when-let (callback (search-text-pane-search-callback pane))
+  (when-let (callback (search-text-pane-soft-search-callback pane))
+    (funcall callback pane text)))
+
+(defmethod search-text-pane-perform-hard-search ((pane search-text-pane) text)
+  "Execute a new search."
+  (when-let (callback (search-text-pane-hard-search-callback pane))
     (funcall callback pane text)))
 
 (defmethod search-text-pane-placeholder-text ((pane search-text-pane))
@@ -84,5 +87,4 @@
 
 (defmethod (setf text-input-pane-text) :after (text (pane search-text-pane))
   "After setting the text, perform a search."
-  (when (search-text-pane-live-search-p pane)
-    (search-text-pane-perform-search pane text)))
+  (search-text-pane-perform-soft-search pane text))

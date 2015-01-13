@@ -21,12 +21,16 @@
   (:use :cl :lw :capi :fli)
   (:export
 
+   ;;
+   #:get-user-name
+
    ;; search-text-pane
    #:search-text-pane
    #:search-text-pane-last-search
-   #:search-text-pane-live-search-p
-   #:search-text-pane-search-callback
-   #:search-text-pane-perform-search
+   #:search-text-pane-soft-search-callback
+   #:search-text-pane-hard-search-callback
+   #:search-text-pane-perform-soft-search
+   #:search-text-pane-perform-hard-search
    #:search-text-pane-placeholder-text
    ))
 
