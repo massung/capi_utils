@@ -21,7 +21,7 @@
 
 (defparameter *default-search-pane-font*
   #+cocoa (gp:make-font-description :family "Helvetica Neue" :size 13)
-  #+mswindows (gp:make-font-description :stock "MS Sans Serif" :size 9))
+  #+mswindows (gp:make-font-description :stock "MS Sans Serif" :size 10))
 
 (defclass search-text-pane (text-input-pane)
   ((last-search   :initform nil :initarg :last-search          :accessor search-text-pane-last-search)
