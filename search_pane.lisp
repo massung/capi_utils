@@ -34,12 +34,20 @@
    :accepts-focus-p t
    :font *default-search-pane-font*
    :text-change-callback 'update-search-text-pane
-   :callback 'search-text-pane-perform-hard-search
+   :navigation-callback 'navigate-search-text-pane
    :callback-type :element-data))
 
 (defmethod update-search-text-pane (text (pane search-text-pane) interface pos)
   "The search text was modified, call the search callback."
   (search-text-pane-perform-soft-search pane text))
+
+(defmethod navigate-search-text-pane ((pane search-text-pane) operation)
+  "Force a hard search when enter is pressed."
+  (case operation
+    ((:enter :shift-enter :return :shift-return)
+     (let ((text (text-input-pane-text pane)))
+       (when (plusp (length text))
+         (search-text-pane-perform-hard-search pane text))))))
 
 (defmethod search-text-pane-perform-soft-search ((pane search-text-pane) text)
   "Execute a new search."
@@ -48,6 +56,7 @@
 
 (defmethod search-text-pane-perform-hard-search ((pane search-text-pane) text)
   "Execute a new search."
+  (setf (search-text-pane-last-search pane) text)
   (when-let (callback (search-text-pane-hard-search-callback pane))
     (funcall callback pane text)))
 
