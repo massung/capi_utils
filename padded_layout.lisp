@@ -68,3 +68,44 @@
                 (bottom-pane (make-instance 'y-margin-pane :visible-min-height bottom-margin))
                 (left-pane (make-instance 'x-margin-pane :visible-min-width left-margin)))
             (list nil top-pane nil left-pane inner-pane right-pane nil bottom-pane nil)))))
+
+(defmethod (setf padded-layout-inner-pane) :after (pane (layout padded-layout))
+  "Change the inner pane of the layout description."
+  (let ((xs (layout-description layout)))
+    (setf (fifth xs) pane)
+
+    ;; change the inner pane
+    (apply-in-pane-process layout #'(setf layout-description) xs layout)))
+
+(defmethod (setf padded-layout-top-margin) :after (margin (layout padded-layout))
+  "Change the height of the top margin pane."
+  (let ((xs (layout-description layout)))
+    (setf (second xs) (make-instance 'y-margin-pane :visible-min-height margin))
+    
+    ;; change the layout
+    (apply-in-pane-process layout #'(setf layout-description) xs layout)))
+
+(defmethod (setf padded-layout-right-margin) :after (margin (layout padded-layout))
+  "Change the width of the right margin pane."
+  (let ((xs (layout-description layout)))
+    (setf (sixth xs) (make-instance 'x-margin-pane :visible-min-width margin))
+    
+    ;; change the layout
+    (apply-in-pane-process layout #'(setf layout-description) xs layout)))
+
+(defmethod (setf padded-layout-bottom-margin) :after (margin (layout padded-layout))
+  "Change the height of the bottom margin pane."
+  (let ((xs (layout-description layout)))
+    (setf (eighth xs) (make-instance 'y-margin-pane :visible-min-height margin))
+    
+    ;; change the layout
+    (apply-in-pane-process layout #'(setf layout-description) xs layout)))
+
+(defmethod (setf padded-layout-left-margin) :after (margin (layout padded-layout))
+  "Change the height of the left margin pane."
+  (let ((xs (layout-description layout)))
+    (setf (fourth xs) (make-instance 'x-margin-pane :visible-min-width margin))
+    
+    ;; change the layout
+    (apply-in-pane-process layout #'(setf layout-description) xs layout)))
+
