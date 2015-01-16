@@ -32,6 +32,14 @@
    #:search-text-pane-perform-soft-search
    #:search-text-pane-perform-hard-search
    #:search-text-pane-placeholder-text
+
+   ;; padded-layout
+   #:padded-layout
+   #:padded-layout-inner-pane
+   #:padded-layout-top-margin
+   #:padded-layout-right-margin
+   #:padded-layout-bottom-margin
+   #:padded-layout-left-margin
    ))
 
 (in-package :capi-utils)

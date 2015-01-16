@@ -13,4 +13,5 @@
   :components ((:file "capi_utils")
                #+cocoa (:file "osx_utils")
                #+mswindows (:file "win_utils")
-               (:file "search_pane")))
+               (:file "search_pane")
+               (:file "padded_layout")))
