@@ -21,8 +21,15 @@
   (:use :cl :lw :capi :fli)
   (:export
 
-   ;;
+   ;; platform-independent functions
    #:get-user-name
+
+   ;; os x functions
+   #+cocoa #:hide-application
+   #+cocoa #:hide-other-applications
+   #+cocoa #:unhide-application
+   #+cocoa #:unhide-all-applications
+   #+cocoa #:open-file-with-application
 
    ;; search-text-pane
    #:search-text-pane
